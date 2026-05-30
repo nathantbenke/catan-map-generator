@@ -63,6 +63,15 @@ export interface SpotScore {
   synergyBonus: number;
   scarcityBonus: number;
   expansionBonus: number;
+  /** Bonus for having BOTH brick and wood adjacent (any numbers) — enables an
+   *  early road, which is the snake-draft expansion lever. Distinct from the
+   *  shared-number "road combo" inside synergyBonus. */
+  roadPotentialBonus: number;
+  /** Bonus for the resource cards generated when this spot is placed as the
+   *  second settlement (one card per adjacent producing hex per Catan rules).
+   *  Models the early-game speed-run plan: get cards on placement → road →
+   *  third settlement at a distance-2 spot. */
+  startingHandBonus: number;
   sameNumberPenalty: number;
   total: number;
   hasRoadCombo: boolean;

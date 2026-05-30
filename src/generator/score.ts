@@ -35,22 +35,37 @@ export function scoreMap(hexes: Hex[], ports: Port[], playerCount: PlayerCount):
     if (idB) portByIntersection.set(idB, meta);
   }
 
-  // Per-map resource tile counts. Drives the scarcity bonus below: a resource
-  // with fewer tiles on the board is harder to come by, so spots adjacent to
-  // it deserve a small premium when ranking starting positions.
+  // Per-map resource tile counts AND pip yields. Both drive the scarcity
+  // bonus below: a resource is "scarce" if it has FEW tiles (hard to reach)
+  // OR LOW total pips (rolls rarely even where it exists). Spots adjacent to
+  // scarce resources get a premium because trading for them mid-game is
+  // expensive. Distinguishing the two captures cases the user flagged:
+  // 4 wheat tiles all on 2/3/11/12 are scarcer in production than 3 ore
+  // tiles on 5/6/8 — tile count alone would say the opposite.
   const tilesPerResource = new Map<ProducingResource, number>();
+  const pipsPerResource = new Map<ProducingResource, number>();
   for (const h of hexes) {
     if (h.resource === 'desert') continue;
     tilesPerResource.set(h.resource, (tilesPerResource.get(h.resource) ?? 0) + 1);
+    if (h.number !== null) {
+      pipsPerResource.set(
+        h.resource,
+        (pipsPerResource.get(h.resource) ?? 0) + (PIP_VALUE[h.number] ?? 0),
+      );
+    }
   }
   const maxTiles = Math.max(0, ...tilesPerResource.values());
+  const maxPips = Math.max(0, ...pipsPerResource.values());
 
   // Pass 1: base spot scores (without expansion bonus).
   const baseSpots = new Map<string, SpotScore>();
   for (const inter of graph.intersections.values()) {
     baseSpots.set(
       inter.id,
-      scoreSpot(inter, hexById, portByIntersection.get(inter.id), tilesPerResource, maxTiles),
+      scoreSpot(
+        inter, hexById, portByIntersection.get(inter.id),
+        tilesPerResource, maxTiles, pipsPerResource, maxPips,
+      ),
     );
   }
 
@@ -93,7 +108,7 @@ export function scoreMap(hexes: Hex[], ports: Port[], playerCount: PlayerCount):
   }
 
   const health = computeHealth(hexes);
-  const fairness = simulateSnakeDraft(graph, spots, playerCount);
+  const fairness = simulateSnakeDraft(graph, spots, playerCount, hexById);
 
   return { graph, spots, health, fairness };
 }
@@ -104,6 +119,8 @@ function scoreSpot(
   port: { type: string; resource?: ProducingResource } | undefined,
   tilesPerResource: Map<ProducingResource, number>,
   maxTiles: number,
+  pipsPerResource: Map<ProducingResource, number>,
+  maxPips: number,
 ): SpotScore {
   const adjHexes = inter.hexIds.map(id => hexById.get(id)!).filter(Boolean);
   const pipValue = adjHexes.reduce((s, h) => s + pip(h), 0);
@@ -143,6 +160,22 @@ function scoreSpot(
   if (hasCityCombo) synergyBonus += 1.5;
   if (hasSettlementCombo) synergyBonus += 0.5;
 
+  // Road potential: just having brick AND wood adjacent (any numbers) enables
+  // an early road, the snake-draft expansion lever. Smaller than the shared-
+  // number road combo above, but applies whenever both materials touch the
+  // intersection so spots with split numbers still get partial credit.
+  const roadPotentialBonus =
+    uniqueResources.has('brick') && uniqueResources.has('wood') ? 0.8 : 0;
+
+  // Starting-hand bonus: per Catan rules the SECOND settlement generates one
+  // resource card per adjacent producing hex on placement. Modeled here as a
+  // flat per-hex premium since both the simulator's picks contribute to the
+  // player's total (we can't tell at scoring time which will be 1st vs 2nd).
+  // 0.3 per producing hex → max 0.9 at a 3-hex inland spot, 0.3 at a coastal
+  // 1-hex spot.
+  const producingAdjCount = adjHexes.filter(h => h.resource !== 'desert').length;
+  const startingHandBonus = producingAdjCount * 0.3;
+
   // Same-number-on-multiple-adjacent-hexes is a double-edged sword: large
   // payout when the number rolls, but the spot depends on a SINGLE die roll
   // for its income (vs. the typical 2–3 distinct numbers at an intersection).
@@ -160,21 +193,36 @@ function scoreSpot(
   }
 
   // Scarcity bonus: each UNIQUE adjacent resource type contributes a small
-  // premium proportional to how scarce that resource is on this map (max
-  // tile count minus this resource's tile count). On a standard board this
-  // lifts spots adjacent to brick or ore (3 tiles) over otherwise-equal
-  // spots adjacent only to 4-tile resources, since brick/ore are the harder
-  // resources to trade for. When desert is replaced with ore, scarcity
-  // shifts naturally because tile counts shift.
+  // premium proportional to how scarce that resource is on this map. Two
+  // components, summed:
+  //   • Tile-count scarcity: (maxTiles − tiles) × 0.5 — fewer hexes of this
+  //     resource exist, fewer corners to compete for.
+  //   • Pip-yield scarcity:  (maxPips  − pips ) × 0.06 — even if tile count
+  //     is fine, if those tiles roll rarely the resource is hard to come by.
+  // Both signals reinforce the "this resource is sought-after" effect — if
+  // a map has one wheat-rich and four wheat-starved resources, spots on the
+  // starved ones get extra pull.
   let scarcityBonus = 0;
   for (const resource of uniqueResources) {
     const tiles = tilesPerResource.get(resource as ProducingResource) ?? 0;
+    const pips = pipsPerResource.get(resource as ProducingResource) ?? 0;
     if (tiles > 0 && maxTiles > tiles) {
       scarcityBonus += (maxTiles - tiles) * 0.5;
     }
+    if (pips > 0 && maxPips > pips) {
+      scarcityBonus += (maxPips - pips) * 0.06;
+    }
   }
 
-  const total = pipValue + diversityBonus + portBonus + synergyBonus + scarcityBonus + sameNumberPenalty;
+  const total =
+    pipValue +
+    diversityBonus +
+    portBonus +
+    synergyBonus +
+    scarcityBonus +
+    roadPotentialBonus +
+    startingHandBonus +
+    sameNumberPenalty;
 
   return {
     intersectionId: inter.id,
@@ -184,6 +232,8 @@ function scoreSpot(
     synergyBonus,
     scarcityBonus,
     expansionBonus: 0, // filled in by the expansion-potential pass in scoreMap
+    roadPotentialBonus,
+    startingHandBonus,
     sameNumberPenalty,
     total,
     hasRoadCombo,
@@ -192,10 +242,33 @@ function scoreSpot(
   };
 }
 
+// Per-Catan-rules, the road-potential and starting-hand bonuses only apply to
+// the SECOND settlement (which alone generates cards on placement and can
+// turn those cards into a turn-1 road). For the FIRST settlement they're
+// noise — what matters is pure long-term production. The snake-draft sim
+// reflects this by ranking round-1 picks on first-pick value and round-2
+// picks on the full total.
+function firstPickValue(s: SpotScore): number {
+  return s.total - s.roadPotentialBonus - s.startingHandBonus;
+}
+
+function uniqueAdjResources(
+  inter: Intersection,
+  hexById: Map<string, Hex>,
+): Set<ProducingResource> {
+  const out = new Set<ProducingResource>();
+  for (const hexId of inter.hexIds) {
+    const h = hexById.get(hexId);
+    if (h && h.resource !== 'desert') out.add(h.resource as ProducingResource);
+  }
+  return out;
+}
+
 function simulateSnakeDraft(
   graph: IntersectionGraph,
   spots: Map<string, SpotScore>,
   playerCount: PlayerCount,
+  hexById: Map<string, Hex>,
 ): FairnessReport {
   const order: number[] = [];
   for (let i = 0; i < playerCount; i++) order.push(i);
@@ -204,18 +277,39 @@ function simulateSnakeDraft(
   const blocked = new Set<string>();
   const picks: FairnessReport['picks'] = [];
   const playerTotals = new Array(playerCount).fill(0);
+  // Each player's resource exposure carried over from their FIRST pick.
+  // Used to bias round-2 picks toward complementary resources — the classic
+  // "don't double up on brick/wheat when your first spot already has both"
+  // heuristic that nearly every player applies in real play.
+  const playerResources: Set<ProducingResource>[] =
+    Array.from({ length: playerCount }, () => new Set());
 
-  for (const playerIdx of order) {
+  for (let step = 0; step < order.length; step++) {
+    const playerIdx = order[step];
+    const isSecondPick = step >= playerCount;
+    const valueOf = (s: SpotScore) => {
+      if (!isSecondPick) return firstPickValue(s);
+      const inter = graph.intersections.get(s.intersectionId);
+      if (!inter) return s.total;
+      const adj = uniqueAdjResources(inter, hexById);
+      let newResources = 0;
+      for (const r of adj) if (!playerResources[playerIdx].has(r)) newResources++;
+      // 0.5 per new resource — matches the existing diversityBonus weight so
+      // diversification feels like the same currency as in-spot diversity.
+      return s.total + newResources * 0.5;
+    };
     const ranked = Array.from(spots.values())
       .filter(s => !blocked.has(s.intersectionId))
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => valueOf(b) - valueOf(a));
     if (ranked.length === 0) break;
     const chosen = ranked[0];
-    picks.push({ playerIndex: playerIdx, intersectionId: chosen.intersectionId, value: chosen.total });
-    playerTotals[playerIdx] += chosen.total;
+    const value = valueOf(chosen);
+    picks.push({ playerIndex: playerIdx, intersectionId: chosen.intersectionId, value });
+    playerTotals[playerIdx] += value;
     blocked.add(chosen.intersectionId);
-    const inter = graph.intersections.get(chosen.intersectionId)!;
-    for (const nb of inter.neighbors) blocked.add(nb);
+    const interC = graph.intersections.get(chosen.intersectionId)!;
+    for (const nb of interC.neighbors) blocked.add(nb);
+    for (const r of uniqueAdjResources(interC, hexById)) playerResources[playerIdx].add(r);
   }
 
   const mean = playerTotals.reduce((a, b) => a + b, 0) / playerTotals.length;

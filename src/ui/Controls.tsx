@@ -52,11 +52,19 @@ export function Controls() {
   const showTargetPicker =
     variants.challenge.flavor === 'scarcity' || variants.challenge.flavor === 'boomOrBust';
 
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  useEffect(() => {
+    if (shareStatus === 'idle') return;
+    const t = window.setTimeout(() => setShareStatus('idle'), 2000);
+    return () => window.clearTimeout(t);
+  }, [shareStatus]);
   const onShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
+      setShareStatus('copied');
     } catch (err) {
       console.warn('clipboard write failed', err);
+      setShareStatus('failed');
     }
   };
 
@@ -162,8 +170,13 @@ export function Controls() {
         <button className="btn btn--primary" onClick={generate} disabled={generating}>
           {generating ? 'Generating…' : 'Generate map'}
         </button>
-        <button className="btn btn--secondary" onClick={onShare} disabled={!map}>
-          Share
+        <button
+          className={`btn btn--secondary ${shareStatus === 'copied' ? 'btn--success' : ''} ${shareStatus === 'failed' ? 'btn--warn' : ''}`}
+          onClick={onShare}
+          disabled={!map}
+          aria-live="polite"
+        >
+          {shareStatus === 'copied' ? 'Link copied!' : shareStatus === 'failed' ? 'Copy failed' : 'Share'}
         </button>
       </div>
 

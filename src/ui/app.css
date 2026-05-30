@@ -384,6 +384,19 @@
   border: 2px solid var(--catan-brown-mid);
 }
 
+/* Transient share-button states: flash green/red briefly after click so the
+   user gets clear feedback that the URL was (or wasn't) copied to clipboard. */
+.btn--success {
+  background: #6fa84a;
+  color: var(--catan-cream);
+  border-color: #3d6a26;
+}
+.btn--warn {
+  background: var(--catan-red-bright);
+  color: var(--catan-cream);
+  border-color: var(--catan-red-deep);
+}
+
 .btn:active {
   transform: translateY(1px);
 }
