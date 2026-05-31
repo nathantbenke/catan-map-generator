@@ -1,0 +1,129 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-brickore.test.ts[2m > [22m[2mbrick+ore dominance investigation[2m > [22m[2mattribution / counterfactual / diversity / constraint
+[22m[39m
+Phase 1 — generating 400 baseline maps for pc=4...
+  400 succeeded in 14.6s
+
+Phase 2 — average pip per resource tile (across all baseline maps):
+
+  wood     avg pip/tile = 3.171  (n=1600 tiles)
+  brick    avg pip/tile = 3.358  (n=1200 tiles)
+  wheat    avg pip/tile = 3.109  (n=1600 tiles)
+  sheep    avg pip/tile = 3.155  (n=1600 tiles)
+  ore      avg pip/tile = 3.396  (n=1200 tiles)
+  ──────── board avg = 3.222 pip/tile
+
+Phase 3 — Top-spot ATTRIBUTION:
+
+  config              brick+ore%  sww%  Δ vs base  | most-common-combo
+  baseline (full)       49.8%   1.0%     +0.0pp  | brick+ore+wheat (21.0%)
+  pure pipValue         23.8%  13.5%    -26.0pp  | ore+wheat+wood (18.3%)
+  no synergy ALL        49.8%   1.0%     +0.0pp  | brick+ore+wheat (21.0%)
+  no roadCombo          49.8%   1.0%     +0.0pp  | brick+ore+wheat (21.0%)
+  no cityCombo          49.8%   1.0%     +0.0pp  | brick+ore+wheat (21.0%)
+  no roadPotential      54.0%   2.0%     +4.3pp  | brick+ore+wheat (26.8%)
+  no startingHand       49.8%   1.0%     +0.0pp  | brick+ore+wheat (21.0%)
+  no expansion          50.0%   0.5%     +0.3pp  | brick+ore+wheat (21.0%)
+  no scarcity           26.0%   8.0%    -23.8pp  | brick+wheat+wood (13.5%)
+  no pairScarcity       48.5%   0.8%     -1.3pp  | brick+ore+wheat (20.3%)
+  no diversity          49.8%   1.0%     +0.0pp  | brick+ore+wheat (21.0%)
+  no port               49.8%   1.0%     +0.0pp  | brick+ore+wheat (21.0%)
+
+  Components RANKED by contribution to brick+ore dominance:
+    no scarcity            disable → brick+ore drops by 23.8pp (real contributor)
+    no roadPotential       disable → brick+ore drops by 4.3pp (no effect / inverse)
+    no pairScarcity        disable → brick+ore drops by 1.3pp (real contributor)
+    no expansion           disable → brick+ore drops by 0.3pp (no effect / inverse)
+    no synergy ALL         disable → brick+ore drops by 0.0pp (no effect / inverse)
+    no roadCombo           disable → brick+ore drops by 0.0pp (no effect / inverse)
+    no cityCombo           disable → brick+ore drops by 0.0pp (no effect / inverse)
+    no startingHand        disable → brick+ore drops by 0.0pp (no effect / inverse)
+    no diversity           disable → brick+ore drops by 0.0pp (no effect / inverse)
+    no port                disable → brick+ore drops by 0.0pp (no effect / inverse)
+
+
+Phase 4 — COUNTERFACTUAL: top spot if brick+ore excluded.
+
+  199/400 maps (49.8%) had brick+ore #1.
+
+  Gap from brick+ore #1 to next non-BO spot:
+    mean = 0.805, median = 0.717, min = 0.004, max = 2.562
+    "narrowly ahead" (gap < 0.5):    57/199 (28.6%)
+    "overwhelmingly ahead" (>2.0):   5/199 (2.5%)
+
+  Replacement combos (top-10 most common):
+    brick+sheep+wood                 41 (20.6%)
+    brick+wheat+wood                 37 (18.6%)
+    ore+sheep+wood                   35 (17.6%)
+    brick+sheep+wheat                34 (17.1%)
+    ore+sheep+wheat                  26 (13.1%)
+    ore+wheat+wood                   19 (9.5%)
+    sheep+wheat+wood                  7 (3.5%)
+
+
+Phase 5 — TOP-N DIVERSITY AUDIT:
+
+  Top-5:
+    avg unique combos / map:       4.10 / 5
+    avg combo entropy (bits):      1.946 / 2.322 max
+    avg brick+ore spots / map:     1.71
+    avg sheep+wheat+wood / map:    0.21
+  Top-10:
+    avg unique combos / map:       6.52 / 10
+    avg combo entropy (bits):      2.556 / 3.322 max
+    avg brick+ore spots / map:     2.73
+    avg sheep+wheat+wood / map:    0.71
+  Top-20:
+    avg unique combos / map:       10.49 / 20
+    avg combo entropy (bits):      3.188 / 4.322 max
+    avg brick+ore spots / map:     4.17
+    avg sheep+wheat+wood / map:    2.28
+
+
+Phase 6 — CONSTRAINT: regenerate with noMultipleRedsOnResource=OFF (n=200):
+
+  200 succeeded in 6.9s
+
+  Resource avg pip/tile (constraint OFF):
+    wood     avg pip/tile = 3.145
+    brick    avg pip/tile = 3.293
+    wheat    avg pip/tile = 3.121
+    sheep    avg pip/tile = 3.184
+    ore      avg pip/tile = 3.440
+
+  brick+ore top-spot rate: 49.0%   (baseline: 49.8%)
+  sheep+wheat+wood rate:   0.50%
+
+  Top-spot combos:
+    brick+ore+sheep                19.0%
+    brick+ore+wheat                17.5%
+    brick+wheat+wood               12.5%
+    brick+sheep+wood               12.5%
+    brick+ore+wood                 12.5%
+    ore+sheep+wood                 7.5%
+    ore+wheat+wood                 6.5%
+    brick+sheep+wheat              6.0%
+    ore+sheep+wheat                5.5%
+    sheep+wheat+wood               0.5%
+
+
+Phase 7 — Composition of brick+ore #1 spots:
+
+  n=199 brick+ore top spots
+  avg pipValue:            11.73
+  avg total (with bonus):  15.76
+  has shared-num roadCombo: 0 (0.0%)
+  has shared-num cityCombo: 0 (0.0%)
+  has BOTH combos:          0 (0.0%)
+  has NEITHER combo:        199 (100.0%)
+
+ [32m✓[39m tests/stress-brickore.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 21482[2mms[22m[39m
+   [33m[2m✓[22m[39m brick+ore dominance investigation[2m > [22mattribution / counterfactual / diversity / constraint [33m21481[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 13:20:18
+[2m   Duration [22m 21.87s[2m (transform 99ms, setup 0ms, collect 112ms, tests 21.48s, environment 0ms, prepare 105ms)[22m
+
