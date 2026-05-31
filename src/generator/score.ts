@@ -23,10 +23,32 @@ export interface ScoredMap {
   pairs: ResourcePair[];
   pipSpatial: PipSpatial;
   /** Archetype counts among the top-20 highest-value spots. The metric
-   *  guards against monocultural maps where every top corner pushes the
-   *  same strategy — a "balanced" board that's actually 18/20 city rush
-   *  forces every player into the same plan and kills strategic variety. */
+   *  is for UI display only — shows the composition of top-by-total
+   *  spots. The strategic-diversity gate uses viableArchetypeCounts
+   *  instead because port-economy spots structurally can't reach top-20
+   *  (coastal spots have only 1-2 hexes, capped pip production). */
   archetypeMix: Record<Archetype, number>;
+  /** Board-wide count of spots STRUCTURALLY eligible for each archetype,
+   *  using simple binary predicates (no quality thresholds). Multi-label:
+   *  a single spot can contribute to multiple archetypes' counts. Drives
+   *  the strategic-diversity gate (≥3 archetypes with ≥k=5 eligible
+   *  spots). Replaces the prior top-20 + dominant-archetype check, which
+   *  rendered port-economy invisible. */
+  viableArchetypeCounts: Record<Archetype, number>;
+  /** Diagnostic-only: top port-economy openings on this board ranked by
+   *  multi-dim strength (port hinterland support + matching-resource
+   *  production + surplus-pressure). NOT consulted by the strategic-
+   *  diversity gate — exposed for distributional UI reporting per the
+   *  tiered-intent model: eligibility is structural, strength is
+   *  observable, gating is separate from valuation. */
+  portEconomyOpenings: Array<{
+    intersectionId: string;
+    strength: number;
+    portStrength: number;
+    production: number;
+    surplus: number;
+    rank: number; // rank in spot.total ordering, for visibility context
+  }>;
   ports: PortSupport[];
   /** Max/min support across SPECIFIC-resource ports (excludes generic).
    *  Captures hidden bias: 9 sheep tiles around the sheep port vs 6
@@ -409,8 +431,94 @@ export function scoreMap(
   const pipSpatial = computePipSpatial(hexes);
   const archetypeMix = topNArchetypeMix(spots, 20);
 
+  // Board-wide viable counts per archetype. Multi-label aggregation —
+  // a spot eligible for both expansion and balanced contributes to both.
+  const viableArchetypeCounts: Record<Archetype, number> = {
+    expansion: 0, cityRush: 0, portEconomy: 0, devCards: 0, balanced: 0,
+  };
+  for (const s of spots.values()) {
+    for (const a of s.eligibleArchetypes) viableArchetypeCounts[a]++;
+  }
+
+  // Diagnostic-only: port-economy openings ranked by multi-dim strength.
+  // Used purely for UI display; NOT consulted by the diversity gate.
+  // Strength formula: portStrength × 0.4 + production × 1.2
+  //                   + (clamp(surplus, 0.5, 2.0) − 1.0) × 3
+  // where production = matching-resource pip sum for specific ports, or
+  // total adjacent producing pip sum for generic ports; surplus = the
+  // resource's productionShare / expectedShare (clamp prevents extreme
+  // health-status maps from dominating).
+  // portByIntersection already exists from the scoreSpot pass; rebuild
+  // here to keep this block self-contained for the diagnostic surface.
+  const portByIntersectionForDiag = new Map<string, { type: string; resource?: ProducingResource }>();
+  for (const p of ports) {
+    const idA = graph.byHexCorner.get(`${p.hexId}:${p.side}`);
+    const idB = graph.byHexCorner.get(`${p.hexId}:${(p.side + 1) % 6}`);
+    const meta = { type: p.type, resource: p.type === 'generic' ? undefined : (p.type as ProducingResource) };
+    if (idA) portByIntersectionForDiag.set(idA, meta);
+    if (idB) portByIntersectionForDiag.set(idB, meta);
+  }
+  const supportByIntersection = new Map<string, number>();
+  for (const ps of portSupports) {
+    for (const id of ps.intersectionIds) {
+      supportByIntersection.set(id, Math.max(supportByIntersection.get(id) ?? 0, ps.supportScore));
+    }
+  }
+  const shareRatio: Record<ProducingResource, number> = { wood: 1, brick: 1, wheat: 1, sheep: 1, ore: 1 };
+  for (const h of health) {
+    shareRatio[h.resource] = h.expectedShare > 0 ? h.productionShare / h.expectedShare : 1;
+  }
+  const sortedSpots = Array.from(spots.values()).sort((a, b) => b.total - a.total);
+  const rankOf = new Map<string, number>();
+  sortedSpots.forEach((s, idx) => rankOf.set(s.intersectionId, idx));
+
+  const portEconomyOpenings: ScoredMap['portEconomyOpenings'] = [];
+  for (const s of spots.values()) {
+    if (!s.eligibleArchetypes.includes('portEconomy')) continue;
+    const inter = graph.intersections.get(s.intersectionId);
+    if (!inter) continue;
+    const portMeta = portByIntersectionForDiag.get(s.intersectionId);
+    if (!portMeta) continue;
+
+    let production = 0;
+    let surplus = 1;
+    const adjResources = new Set<ProducingResource>();
+    const pipByResource = new Map<ProducingResource, number>();
+    for (const hexId of inter.hexIds) {
+      const hex = hexById.get(hexId);
+      if (!hex || hex.resource === 'desert' || hex.number === null) continue;
+      const r = hex.resource as ProducingResource;
+      adjResources.add(r);
+      pipByResource.set(r, (pipByResource.get(r) ?? 0) + (PIP_VALUE[hex.number] ?? 0));
+    }
+    if (portMeta.resource) {
+      production = pipByResource.get(portMeta.resource as ProducingResource) ?? 0;
+      surplus = shareRatio[portMeta.resource as ProducingResource];
+    } else {
+      // generic port — production = total adjacent producing pips;
+      // surplus = mean across adjacent resources
+      for (const v of pipByResource.values()) production += v;
+      const ss = Array.from(adjResources).map(r => shareRatio[r]);
+      surplus = ss.length > 0 ? ss.reduce((a, b) => a + b, 0) / ss.length : 1;
+    }
+    const portStrength = supportByIntersection.get(s.intersectionId) ?? 0;
+    const surplusFactor = Math.max(0.5, Math.min(2.0, surplus));
+    const strength = portStrength * 0.4 + production * 1.2 + (surplusFactor - 1.0) * 3;
+    portEconomyOpenings.push({
+      intersectionId: s.intersectionId,
+      strength,
+      portStrength,
+      production,
+      surplus,
+      rank: rankOf.get(s.intersectionId) ?? -1,
+    });
+  }
+  portEconomyOpenings.sort((a, b) => b.strength - a.strength);
+
   return {
     graph, spots, health, pairs, pipSpatial, archetypeMix,
+    viableArchetypeCounts,
+    portEconomyOpenings,
     ports: portSupports,
     specificPortSupportRatio,
     playerPortDistance: portDist.byPlayer,
@@ -433,17 +541,30 @@ function topNArchetypeMix(
   return mix;
 }
 
-/** True if the board's top-20 spots span at least 3 distinct strategic
- *  archetypes with ≥3 spots each. Catches the failure mode the user
- *  flagged: a "balanced" board where every top corner happens to be
- *  ore+wheat, forcing every player into city-rush. The threshold is
- *  intentionally lenient — 3-of-5 archetypes with at least 3 spots —
- *  so unusual but still playable maps aren't rejected for being a
- *  little narrow. */
-export function hasStrategicDiversity(spots: Map<string, SpotScore>): boolean {
-  const mix = topNArchetypeMix(spots, 20);
-  const archetypesWithCoverage = Object.values(mix).filter(c => c >= 3).length;
-  return archetypesWithCoverage >= 3;
+/** True if the board structurally supports at least 3 distinct strategic
+ *  archetypes with ≥k=5 viable (eligibility-passing) spots each.
+ *
+ *  This gate uses board-wide multi-label eligibility counts rather than
+ *  top-20 dominant-archetype counts. The prior top-20 check was
+ *  observationally broken for port-economy: coastal spots have 1-2 hexes
+ *  vs 3 for inland spots, so port-economy spots structurally couldn't
+ *  reach top-20 by total — at pc=6 the average top-20 portEconomy count
+ *  was 0.10, effectively zero. This filter unconditionally excluded
+ *  port-economy from the diversity signal regardless of how many
+ *  perfectly-good port openings the board actually offered.
+ *
+ *  k=5 is a fixed design parameter chosen from the empirical knee in the
+ *  per-archetype viability curve (pass rate transitions ~85% → ~69% at
+ *  k=5-6 in the calibrated diagnostic). Not derived from a percentile
+ *  rule — it's a stable structural-existence bar.
+ *
+ *  Quality thresholds are NOT applied here on purpose. Per the tiered-
+ *  intent model: eligibility is structural, quality is observable, the
+ *  gate stays separate from valuation. */
+export function hasStrategicDiversity(scored: ScoredMap): boolean {
+  const k = 5;
+  const archetypesMeetingBar = Object.values(scored.viableArchetypeCounts).filter(c => c >= k).length;
+  return archetypesMeetingBar >= 3;
 }
 
 /** Classify a spot's strategic archetype. Each archetype is scored by a
@@ -663,6 +784,24 @@ function scoreSpot(
   }
   const archetype = classifyArchetype(pipByResource, port);
 
+  // Structural eligibility per archetype — purely binary predicates, no
+  // quality threshold. A spot can be eligible for multiple archetypes
+  // (a brick+wood+wheat corner counts for both expansion AND balanced).
+  // Quality scoring belongs to the diagnostic UI surface, not the gate.
+  const has = (r: ProducingResource) => (pipByResource.get(r) ?? 0) > 0;
+  const distinct = pipByResource.size;
+  const eligibleArchetypes: Archetype[] = [];
+  if (has('brick') && has('wood')) eligibleArchetypes.push('expansion');
+  if (has('ore') && has('wheat')) eligibleArchetypes.push('cityRush');
+  if (has('sheep') && (has('wheat') || has('ore'))) eligibleArchetypes.push('devCards');
+  // Port-economy eligibility: spot is on a port AND at least one
+  // producing hex is adjacent. The producing-hex condition is implicit
+  // when port is present (port intersections always touch the producing
+  // hex behind the port edge), but we still gate on `distinct > 0` for
+  // safety.
+  if (port && distinct > 0) eligibleArchetypes.push('portEconomy');
+  if (distinct >= 3) eligibleArchetypes.push('balanced');
+
   return {
     intersectionId: inter.id,
     pipValue,
@@ -680,6 +819,7 @@ function scoreSpot(
     hasCityCombo,
     hasSettlementCombo,
     archetype,
+    eligibleArchetypes,
   };
 }
 

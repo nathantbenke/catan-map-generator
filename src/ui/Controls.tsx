@@ -435,6 +435,47 @@ function AnalyzePanel() {
       </div>
 
       {(() => {
+        // GATE metric — board-wide structural eligibility, multi-label.
+        // The strategic-diversity rejection rule uses these counts at k=5.
+        const viable = scored.viableArchetypeCounts;
+        const entries: Array<[string, number]> = [
+          ['Expansion', viable.expansion],
+          ['City Rush', viable.cityRush],
+          ['Port Econ', viable.portEconomy],
+          ['Dev Cards', viable.devCards],
+          ['Balanced', viable.balanced],
+        ];
+        const K = 5;
+        const meetingBar = entries.filter(([, c]) => c >= K).length;
+        return (
+          <div className="pairs">
+            <div className="pairs__title">
+              Strategic viability (k=5 bar)
+              <span style={{ marginLeft: 8, opacity: 0.7 }}>
+                {meetingBar} archetypes meeting
+                {meetingBar < 3 ? ' ⚠' : ''}
+              </span>
+            </div>
+            <div className="pairs__grid">
+              {entries.map(([label, count]) => (
+                <div
+                  className={`pairs__cell pairs__cell--${count >= K ? 'normal' : count >= 1 ? 'rare' : 'rare'}`}
+                  key={label}
+                >
+                  <span className="pairs__label">{label}</span>
+                  <span className="pairs__count">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
+        // INFORMATIONAL — top-20 composition by dominant archetype.
+        // Distinct from the gate metric above: this shows which archetypes
+        // dominate the highest-pip-value spots, while the gate measures
+        // structural availability anywhere on the board.
         const mix = scored.archetypeMix;
         const entries: Array<[string, number]> = [
           ['Expansion', mix.expansion],
@@ -443,24 +484,43 @@ function AnalyzePanel() {
           ['Dev Cards', mix.devCards],
           ['Balanced', mix.balanced],
         ];
-        const withCoverage = entries.filter(([, c]) => c >= 3).length;
         return (
           <div className="pairs">
             <div className="pairs__title">
-              Top-20 archetype mix
-              <span style={{ marginLeft: 8, opacity: 0.7 }}>
-                {withCoverage} viable
-                {withCoverage < 3 ? ' ⚠' : ''}
-              </span>
+              Top-20 archetype composition
             </div>
             <div className="pairs__grid">
               {entries.map(([label, count]) => (
-                <div
-                  className={`pairs__cell pairs__cell--${count >= 3 ? 'normal' : count >= 1 ? 'rare' : 'rare'}`}
-                  key={label}
-                >
+                <div className="pairs__cell pairs__cell--normal" key={label}>
                   <span className="pairs__label">{label}</span>
                   <span className="pairs__count">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
+        // Port-economy diagnostic surface (distributional, not pass/fail).
+        // Shows the top-3 strongest port openings on this map by the
+        // multi-dim strength formula. Useful for spotting which ports
+        // anchor real trade-economy plays vs which are just adjacent
+        // to weak production.
+        const top = scored.portEconomyOpenings.slice(0, 3);
+        if (top.length === 0) return null;
+        return (
+          <div className="pairs">
+            <div className="pairs__title">Top port-economy openings</div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>
+              {top.map((p, i) => (
+                <div key={p.intersectionId} style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                  <span style={{ minWidth: 18, opacity: 0.5 }}>{i + 1}.</span>
+                  <span style={{ minWidth: 76 }}>strength <strong>{p.strength.toFixed(2)}</strong></span>
+                  <span style={{ minWidth: 70 }}>port {p.portStrength.toFixed(1)}</span>
+                  <span style={{ minWidth: 70 }}>prod {p.production.toFixed(1)}</span>
+                  <span style={{ minWidth: 84 }}>surplus {p.surplus.toFixed(2)}×</span>
+                  <span style={{ opacity: 0.55 }}>rank #{p.rank + 1}</span>
                 </div>
               ))}
             </div>

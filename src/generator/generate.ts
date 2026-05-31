@@ -73,7 +73,7 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
     // Only enforced in balanced mode — challenge modes intentionally bias
     // the strategic landscape (drought = no expansion, scarcity = nothing
     // but city rush, etc.) and shouldn't be rejected for narrowness.
-    if (challenge.kind === 'none' && !hasStrategicDiversity(scored.spots)) continue;
+    if (challenge.kind === 'none' && !hasStrategicDiversity(scored)) continue;
     const fairnessOk = scored.fairness.stdev <= threshold;
     const score = scored.fairness.stdev;
 

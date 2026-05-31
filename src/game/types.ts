@@ -94,8 +94,18 @@ export interface SpotScore {
   hasRoadCombo: boolean;
   hasCityCombo: boolean;
   hasSettlementCombo: boolean;
-  /** Strategic archetype this spot best fits — see Archetype. */
+  /** Strategic archetype this spot best fits — see Archetype. Single
+   *  dominant label, used in the top-20 archetypeMix UI display. */
   archetype: Archetype;
+  /** All archetypes this spot is STRUCTURALLY eligible for (multi-label).
+   *  Drives the strategic-diversity gate via board-wide viable counts.
+   *  Distinct from `archetype` (single dominant label): one spot can
+   *  legitimately contribute to multiple archetypes' viability counts
+   *  (e.g., a brick+wood+wheat corner is eligible for expansion AND
+   *  balanced). Each archetype's eligibility predicate is purely
+   *  structural — quality is not factored here; that's a separate
+   *  diagnostic surface. */
+  eligibleArchetypes: Archetype[];
 }
 
 export interface ResourceHealth {
