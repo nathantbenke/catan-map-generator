@@ -1,0 +1,75 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-planner-bias.test.ts[2m > [22m[2mplanner bias diagnostic[2m > [22m[2mMode A (current planner) vs Mode B (greedy local)
+[22m[39m
+========== pc=3 (n=400) ==========
+  400 maps in 8.4s
+
+  Per-player avg total, centered on mode mean:
+  player    Mode A (planner)        Mode B (greedy)        Δ(A-B)
+  P1         28.255  (-0.34%)       28.554  (+0.08%)   Δ -0.42%
+  P2         28.276  (-0.26%)       28.548  (+0.06%)   Δ -0.32%
+  P3         28.523  (+0.60%)       28.492  (-0.14%)   Δ +0.74%
+
+  P3 − P1 advantage:
+    Mode A (current planner): 0.95%
+    Mode B (greedy local):    -0.22%
+    Amplification (A − B):    1.16%
+
+========== pc=4 (n=400) ==========
+  400 maps in 13.4s
+
+  Per-player avg total, centered on mode mean:
+  player    Mode A (planner)        Mode B (greedy)        Δ(A-B)
+  P1         26.733  (-0.56%)       27.073  (-0.13%)   Δ -0.43%
+  P2         26.759  (-0.46%)       27.113  (+0.02%)   Δ -0.47%
+  P3         26.873  (-0.03%)       27.124  (+0.06%)   Δ -0.09%
+  P4         27.164  (+1.05%)       27.124  (+0.06%)   Δ +0.99%
+
+  P4 − P1 advantage:
+    Mode A (current planner): 1.61%
+    Mode B (greedy local):    0.19%
+    Amplification (A − B):    1.43%
+
+========== pc=5 (n=400) ==========
+  400 maps in 64.6s
+
+  Per-player avg total, centered on mode mean:
+  player    Mode A (planner)        Mode B (greedy)        Δ(A-B)
+  P1         28.068  (-0.38%)       28.612  (+0.51%)   Δ -0.90%
+  P2         28.017  (-0.57%)       28.517  (+0.18%)   Δ -0.75%
+  P3         28.004  (-0.61%)       28.443  (-0.08%)   Δ -0.53%
+  P4         28.076  (-0.36%)       28.400  (-0.23%)   Δ -0.13%
+  P5         28.718  (+1.92%)       28.357  (-0.38%)   Δ +2.30%
+
+  P5 − P1 advantage:
+    Mode A (current planner): 2.32%
+    Mode B (greedy local):    -0.89%
+    Amplification (A − B):    3.20%
+
+========== pc=6 (n=400) ==========
+  400 maps in 70.0s
+
+  Per-player avg total, centered on mode mean:
+  player    Mode A (planner)        Mode B (greedy)        Δ(A-B)
+  P1         27.196  (-0.40%)       27.722  (+0.42%)   Δ -0.82%
+  P2         27.148  (-0.58%)       27.586  (-0.07%)   Δ -0.50%
+  P3         27.120  (-0.68%)       27.568  (-0.14%)   Δ -0.54%
+  P4         27.162  (-0.53%)       27.598  (-0.03%)   Δ -0.49%
+  P5         27.242  (-0.23%)       27.587  (-0.07%)   Δ -0.16%
+  P6         27.967  (+2.42%)       27.578  (-0.10%)   Δ +2.52%
+
+  P6 − P1 advantage:
+    Mode A (current planner): 2.83%
+    Mode B (greedy local):    -0.52%
+    Amplification (A − B):    3.35%
+
+ [32m✓[39m tests/stress-planner-bias.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 156444[2mms[22m[39m
+   [33m[2m✓[22m[39m planner bias diagnostic[2m > [22mMode A (current planner) vs Mode B (greedy local) [33m156443[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 12:56:15
+[2m   Duration [22m 156.88s[2m (transform 114ms, setup 0ms, collect 126ms, tests 156.44s, environment 0ms, prepare 126ms)[22m
+

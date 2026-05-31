@@ -749,7 +749,27 @@ function simulateSnakeDraft(
       chosen = bestSpot;
       value = bestVal;
     } else {
-      // R1: pair-value evaluation.
+      // R1: pair-value evaluation with SURVIVAL-DISCOUNTED planning.
+      //
+      // The planner anticipates a R2 pick when choosing R1, but the planned
+      // B is more likely to survive when fewer picks happen between now
+      // and the player's R2 turn. Snake order makes this asymmetric:
+      //   • P-last R1 → R2 is the very next pick. K = 0 → discount = 1.0.
+      //     Their plan executes; the full pair value matters.
+      //   • P1 R1 → R2 is 2N−2 picks away. K is large → discount is small.
+      //     Their planned B is almost certainly stolen, so they should pick
+      //     A as a robust standalone rather than half of a fragile plan.
+      //
+      // Without this discount the planner gave every player the same
+      // optimistic "I'll get my planned B" expectation, which artificially
+      // inflated P-last's edge (verified: the entire 3.5% P-last advantage
+      // at 6p in the prior diagnostic was planner-induced — greedy mode
+      // showed ~0% bias on the same maps). Survival discounting puts the
+      // planner halfway between optimistic and greedy: forward-looking but
+      // uncertainty-aware.
+      const picksUntilR2 = 2 * playerCount - 2 * step - 2;
+      const planningDiscount = Math.max(0.4, 1 - picksUntilR2 * 0.05);
+
       const topA = available
         .slice()
         .sort((a, b) => firstPickValue(b) - firstPickValue(a))
@@ -776,7 +796,7 @@ function simulateSnakeDraft(
         }
         if (bestB === -Infinity) continue;
 
-        const pair = firstPickValue(A) + bestB;
+        const pair = firstPickValue(A) + bestB * planningDiscount;
         if (pair > bestPair) {
           bestPair = pair;
           bestA = A;
