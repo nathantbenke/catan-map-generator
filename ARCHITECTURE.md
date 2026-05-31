@@ -115,7 +115,7 @@ There's a `checkHardConstraints` pass that runs after randomization. If it fails
 - **Port bonus** — `+1.0` if you have a 2:1 port matching an adjacent resource, `+0.3` for any other port.
 - **Synergy bonus** — `+1.5` for road combo (brick + wood with shared numbers), `+1.5` for city combo (ore + wheat with shared numbers), `+0.5` for all-settlement-resources.
 - **Same-number penalty** — duplicates of the same number on adjacent hexes is a double-edged sword: you double up when it rolls but you have fewer distinct numbers feeding the spot. Penalty scales by pip value (a 12-on-12 is much worse than a 6-on-6).
-- **Scarcity bonus** — proportional to how scarce each adjacent resource is on this specific map.
+- **Scarcity bonus** — proportional to the pip-yield scarcity of each adjacent resource on this specific map. **Production scarcity only**, not tile-count scarcity: the bag's tile distribution is fixed by the rules (brick = 3, ore = 3, others = 4), so the only meaningful scarcity is "this resource rolls rarely on this particular board." A previous tile-count term that rewarded 3-tile-resource adjacencies was removed after a full-regeneration validation showed it amplified a small structural per-tile pip advantage for brick/ore into ~50% top-spot dominance with no compensating gameplay benefit. Pip-yield scarcity alone keeps the principled signal (production-rarity) without the category error.
 - **Expansion potential** — looks two intersections away (the closest legal future settlements under the distance-2 rule) and bonuses spots with viable expansion targets nearby.
 
 The snake-draft simulator then loops `2N` times (each player picks 2 spots, second pick in reverse order). On each iteration:
@@ -128,6 +128,16 @@ The snake-draft simulator then loops `2N` times (each player picks 2 spots, seco
 Player totals are summed, and `stdev` / `spread` reported. `stdev` drives the fairness threshold; `spread` (max − min) is shown in the UI because it's more intuitive.
 
 This is intentionally a **greedy** simulator, not a perfect game-theoretic optimizer. Real human players don't always pick the theoretical maximum — they pick "good" — so a greedy simulator is a reasonable proxy for whether the board is balanced for real play.
+
+### High-yield placement strategy
+
+`randomize.ts` exposes a `spreadHighYieldMode` option that controls how high-yield numbers (5/6/8/9) are distributed across resources during placement:
+
+- **`byCount`** (default) — equalize the total number of high-yield placements per resource. With 8 high-yields across 5 resources, each resource gets ~1.6 high-yields. Because 3-tile resources (brick, ore) have fewer tiles to spread that count across, they end up with a higher per-tile high-yield rate (~50%) than 4-tile resources (~42%). This produces a small structural per-tile pip advantage for brick/ore.
+- **`byRate`** — equalize the per-tile high-yield rate across resources. Removes the 3-tile per-tile bias, but inverts it (brick/ore drop to 35% per-tile rate, others rise to 49%) and **doubles the rate of unhealthy resources per map** (3-tile resources get starved more often when high-yields are diverted to 4-tile resources). Validated via 1,000-map regeneration and rejected.
+- **`off`** — no placement preference. Surprisingly, the per-tile bias still exists in `off` mode (caused by the always-on "don't duplicate this number on this resource" soft preference, which favors 3-tile resources because they're less likely to already-have-this-number). Disabling spread entirely only drops brick+ore top-spot frequency by ~2.6pp.
+
+`byCount` remains the default because the small per-tile pip advantage it allows reflects real Catan economics (brick+ore corners genuinely *are* more valuable on the box-distribution), and the alternatives produce no meaningful gameplay improvement.
 
 ---
 

@@ -258,7 +258,27 @@ function pip(hex: Hex): number {
   return hex.number !== null ? PIP_VALUE[hex.number] : 0;
 }
 
-export function scoreMap(hexes: Hex[], ports: Port[], playerCount: PlayerCount): ScoredMap {
+/** Tunable weights for the scarcityBonus components. Pip-yield scarcity is
+ *  the principled signal (rare production = real strategic scarcity); the
+ *  tile-count term was a category error since the tile bag is fixed by the
+ *  rulebook, not by scarcity, and it amplified a small structural advantage
+ *  for 3-tile resources (brick, ore) into ~50% top-spot dominance. Removing
+ *  it via the full-regeneration validation reduced brick+ore dominance to
+ *  ~37% with zero regression on acceptance rate, fairness, or attempts. */
+export interface ScarcityConfig {
+  /** Multiplier on (maxTiles − tiles). Default 0 (off — was 0.5 historically). */
+  tileWeight: number;
+  /** Multiplier on (maxPips − pips). Default 0.10. */
+  pipWeight: number;
+}
+export const DEFAULT_SCARCITY_CONFIG: ScarcityConfig = { tileWeight: 0, pipWeight: 0.10 };
+
+export function scoreMap(
+  hexes: Hex[],
+  ports: Port[],
+  playerCount: PlayerCount,
+  scarcityConfig: ScarcityConfig = DEFAULT_SCARCITY_CONFIG,
+): ScoredMap {
   const graph = buildIntersectionGraph(hexes);
   const hexById = new Map(hexes.map(h => [h.id, h] as const));
 
@@ -309,6 +329,7 @@ export function scoreMap(hexes: Hex[], ports: Port[], playerCount: PlayerCount):
       scoreSpot(
         inter, hexById, portByIntersection.get(inter.id),
         tilesPerResource, maxTiles, pipsPerResource, maxPips, pairsByKey,
+        scarcityConfig,
       ),
     );
   }
@@ -498,6 +519,7 @@ function scoreSpot(
   pipsPerResource: Map<ProducingResource, number>,
   maxPips: number,
   pairsByKey: Map<string, ResourcePair>,
+  scarcityConfig: ScarcityConfig,
 ): SpotScore {
   const adjHexes = inter.hexIds.map(id => hexById.get(id)!).filter(Boolean);
   const pipValue = adjHexes.reduce((s, h) => s + pip(h), 0);
@@ -599,20 +621,23 @@ function scoreSpot(
   // components, summed:
   //   • Tile-count scarcity: (maxTiles − tiles) × 0.5 — fewer hexes of this
   //     resource exist, fewer corners to compete for.
-  //   • Pip-yield scarcity:  (maxPips  − pips ) × 0.06 — even if tile count
-  //     is fine, if those tiles roll rarely the resource is hard to come by.
-  // Both signals reinforce the "this resource is sought-after" effect — if
-  // a map has one wheat-rich and four wheat-starved resources, spots on the
-  // starved ones get extra pull.
+  //   • Pip-yield scarcity:  (maxPips  − pips ) × pipWeight — even if tile
+  //     count is fine, if those tiles roll rarely the resource is hard to
+  //     come by; this is the only term active in the current default config.
+  // The tile-count term defaulted to 0 after the regeneration validation:
+  // the box-rule tile bag is fixed (not "scarce" in any strategic sense),
+  // and the term amplified a small structural pip advantage for 3-tile
+  // resources into ~50% top-spot dominance. Removing it cut brick+ore
+  // dominance to ~37% with no regression on acceptance / fairness / speed.
   let scarcityBonus = 0;
   for (const resource of uniqueResources) {
     const tiles = tilesPerResource.get(resource as ProducingResource) ?? 0;
     const pips = pipsPerResource.get(resource as ProducingResource) ?? 0;
     if (tiles > 0 && maxTiles > tiles) {
-      scarcityBonus += (maxTiles - tiles) * 0.5;
+      scarcityBonus += (maxTiles - tiles) * scarcityConfig.tileWeight;
     }
     if (pips > 0 && maxPips > pips) {
-      scarcityBonus += (maxPips - pips) * 0.06;
+      scarcityBonus += (maxPips - pips) * scarcityConfig.pipWeight;
     }
   }
 

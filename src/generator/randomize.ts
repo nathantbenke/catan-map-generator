@@ -64,8 +64,19 @@ function placeResources(
   return true;
 }
 
+/** High-yield placement strategies:
+ *  - 'off':     no preference, placement is uniform over candidates
+ *  - 'byCount': equalize COUNT of high-yields per resource (current default).
+ *               Side effect: 3-tile resources get higher PER-TILE high-yield
+ *               rate because the same count divides into fewer tiles. This
+ *               creates a ~5% per-tile pip advantage for brick/ore.
+ *  - 'byRate':  equalize RATE of high-yields per tile across resources.
+ *               Picks the resource with the lowest (hyCount / totalTiles)
+ *               ratio. Removes the 3-tile per-tile bias. */
+export type SpreadHighYieldMode = 'off' | 'byCount' | 'byRate';
+
 interface PlaceNumbersOpts {
-  spreadHighYield: boolean;
+  spreadHighYield: SpreadHighYieldMode;
   noSameNumberAdjacent: boolean;
   noSameNumberOnResource: boolean;
   noMultipleRedsOnResource: boolean;
@@ -129,9 +140,26 @@ function placeNumbers(
     if (candidates.length === 0) return false;
 
     let pool = candidates;
-    if (opts.spreadHighYield) {
-      const minCount = Math.min(...candidates.map(c => hyCount.get(c.resource) ?? 0));
-      const preferred = candidates.filter(c => (hyCount.get(c.resource) ?? 0) === minCount);
+    if (opts.spreadHighYield !== 'off') {
+      // Count or rate? byCount equalizes total high-yield placements per
+      // resource; byRate equalizes per-tile rate so 3-tile resources don't
+      // accumulate higher-density high-yields than 4-tile resources.
+      const tileCount = new Map<string, number>();
+      for (const s of slots) tileCount.set(s.resource, (tileCount.get(s.resource) ?? 0) + 1);
+      const metric = (resource: string): number => {
+        const c = hyCount.get(resource) ?? 0;
+        if (opts.spreadHighYield === 'byRate') {
+          const t = tileCount.get(resource) ?? 1;
+          return c / t;
+        }
+        return c;
+      };
+      let minMetric = Infinity;
+      for (const c of candidates) {
+        const m = metric(c.resource);
+        if (m < minMetric) minMetric = m;
+      }
+      const preferred = candidates.filter(c => metric(c.resource) === minMetric);
       if (preferred.length > 0) pool = preferred;
     }
     // Soft preference (always on): don't place this number on a resource that
@@ -216,6 +244,7 @@ export function randomizeMap(
   playerCount: PlayerCount,
   variants: Variants,
   rng: () => number,
+  spreadMode?: SpreadHighYieldMode,
 ): RandomizedMap {
   const { resourceCounts, numberCounts } = adjustForVariants(playerCount, variants);
   const layout = buildEmptyLayout(playerCount);
@@ -252,8 +281,9 @@ export function randomizeMap(
   placeNumbers(hexes, numberBag, rng, {
     // Only enforce the "spread high-yield across resources" preference in
     // balanced mode. Challenge mode needs the freedom to produce starved or
-    // concentrated resources naturally.
-    spreadHighYield: variants.challenge.flavor === 'none',
+    // concentrated resources naturally. Default mode preserves legacy
+    // behavior (byCount); experiments may override via spreadMode.
+    spreadHighYield: variants.challenge.flavor === 'none' ? (spreadMode ?? 'byCount') : 'off',
     noSameNumberAdjacent: variants.noSameNumberAdjacent,
     noSameNumberOnResource: variants.noSameNumberOnResource,
     noMultipleRedsOnResource: variants.noMultipleRedsOnResource,

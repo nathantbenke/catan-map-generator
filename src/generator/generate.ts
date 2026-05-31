@@ -10,15 +10,17 @@ import type {
 } from '../game/types';
 import { checkHardConstraints } from './constraints';
 import { mulberry32, makeSeed, pick } from './random';
-import { randomizeMap } from './randomize';
+import { randomizeMap, type SpreadHighYieldMode } from './randomize';
 import {
   arePortsBalanced,
   computeHealth,
+  DEFAULT_SCARCITY_CONFIG,
   hasBalancedPipDistribution,
   hasDroughtCluster,
   hasStrategicDiversity,
   isResourceHealthy,
   scoreMap,
+  type ScarcityConfig,
 } from './score';
 
 export interface GenerateOptions {
@@ -26,6 +28,10 @@ export interface GenerateOptions {
   variants: Variants;
   seed?: number;
   maxAttempts?: number;
+  /** Override the scarcityBonus weights — for controlled experiments only. */
+  scarcityConfig?: ScarcityConfig;
+  /** Override the high-yield placement strategy — for controlled experiments. */
+  spreadHighYieldMode?: SpreadHighYieldMode;
 }
 
 export interface GenerateResult {
@@ -47,7 +53,7 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
   let hardOnlyFallback: { hexes: Hex[]; ports: Port[] } | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const candidate = randomizeMap(opts.playerCount, opts.variants, rng);
+    const candidate = randomizeMap(opts.playerCount, opts.variants, rng, opts.spreadHighYieldMode);
     const hard = checkHardConstraints(candidate.hexes, candidate.ports, {
       noSameNumberAdjacent: opts.variants.noSameNumberAdjacent,
       noSameNumberOnResource: opts.variants.noSameNumberOnResource,
@@ -59,7 +65,10 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
     const challenge = resolveChallenge(opts.variants, rng);
     if (!challengeMatches(candidate.hexes, candidate.ports, opts.playerCount, challenge)) continue;
 
-    const scored = scoreMap(candidate.hexes, candidate.ports, opts.playerCount);
+    const scored = scoreMap(
+      candidate.hexes, candidate.ports, opts.playerCount,
+      opts.scarcityConfig ?? DEFAULT_SCARCITY_CONFIG,
+    );
     // Archetype diversity is checked post-scoring (it needs spot.archetype).
     // Only enforced in balanced mode — challenge modes intentionally bias
     // the strategic landscape (drought = no expansion, scarcity = nothing
