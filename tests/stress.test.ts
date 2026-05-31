@@ -7,7 +7,7 @@ import { describe, it } from 'vitest';
 import { generateMap } from '../src/generator/generate';
 import { scoreMap } from '../src/generator/score';
 import { checkHardConstraints } from '../src/generator/constraints';
-import { PIP_VALUE, PRODUCING_RESOURCES, boardFor } from '../src/game/constants';
+import { PRODUCING_RESOURCES, boardFor } from '../src/game/constants';
 import type {
   Archetype,
   MapState,
@@ -55,7 +55,7 @@ interface MapStats {
   topSpotTotal: number;
   topSpotResources: ProducingResource[];
   // The actual seed — for reproducing odd maps.
-  seed: string;
+  seed: number;
 }
 
 function collectStats(map: MapState, attempts: number, fellBack: boolean): MapStats {

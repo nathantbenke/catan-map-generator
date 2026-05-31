@@ -1,0 +1,224 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-viability-calibration.test.ts[2m > [22m[2mviability calibration[2m > [22m[2mper-archetype quality thresholds + k search
+[22m[39m
+================================================
+     pc=4   n=600
+================================================
+Generated 600 maps in 27.9s
+
+========== 1) QUALITY DISTRIBUTION (all eligible spots, per archetype) ==========
+Archetype       n eligible      p10     p25     p50     p75     p90     p95
+  expansion         4188      6.00    7.50    9.00   10.50   13.50   13.50
+  cityRush          4230      6.00    7.50   10.50   12.00   13.50   13.50
+  portEconomy      10472      0.75    1.37    5.06    8.13    9.73   10.84
+  devCards          8523      4.00    5.00    6.50    8.50    9.00    9.50
+  balanced         11868      4.90    5.60    7.00    7.70    8.40    8.40
+
+========== 2) PER-MAP QUALITY: best / top-3 avg / top-5 avg ==========
+  expansion      best p50=12.00  p25=10.50   top3 p50=11.50  p25=10.00   top5 p50=10.50  p25=9.30
+  cityRush       best p50=12.00  p25=10.50   top3 p50=11.50  p25=10.50   top5 p50=10.80  p25=9.90
+  portEconomy    best p50=12.67  p25=10.64   top3 p50=10.54  p25=9.79   top5 p50=9.66  p25=9.00
+  devCards       best p50=9.50  p25=9.00   top3 p50=9.00  p25=8.50   top5 p50=8.60  p25=8.10
+  balanced       best p50=8.40  p25=8.40   top3 p50=8.17  p25=7.93   top5 p50=7.98  p25=7.84
+
+========== 3) THRESHOLD SWEEP (find threshold for median count ≈ 5) ==========
+  expansion      recommended t=0.0 (median count ≈ 5):
+     t=  0.0    median count= 6.0    p25-p75=6-8  ←
+     t=  0.5    median count= 6.0    p25-p75=6-8
+     t=  1.0    median count= 6.0    p25-p75=6-8
+     t=  1.5    median count= 6.0    p25-p75=6-8
+     t=  2.0    median count= 6.0    p25-p75=6-8
+  cityRush       recommended t=5.0 (median count ≈ 5):
+     t=  3.0    median count= 8.0    p25-p75=6-8
+     t=  3.5    median count= 7.0    p25-p75=6-8
+     t=  4.0    median count= 7.0    p25-p75=6-8
+     t=  4.5    median count= 7.0    p25-p75=6-8
+     t=  5.0    median count= 6.0    p25-p75=6-8  ←
+     t=  5.5    median count= 6.0    p25-p75=6-8
+     t=  6.0    median count= 6.0    p25-p75=6-8
+     t=  6.5    median count= 6.0    p25-p75=4-8
+     t=  7.0    median count= 6.0    p25-p75=4-8
+  portEconomy    recommended t=8.0 (median count ≈ 5):
+     t=  6.0    median count= 8.0    p25-p75=6-9
+     t=  6.5    median count= 7.0    p25-p75=6-8
+     t=  7.0    median count= 6.0    p25-p75=5-8
+     t=  7.5    median count= 6.0    p25-p75=4-6
+     t=  8.0    median count= 5.0    p25-p75=4-6  ←
+     t=  8.5    median count= 4.0    p25-p75=2-4
+     t=  9.0    median count= 3.0    p25-p75=2-4
+     t=  9.5    median count= 2.0    p25-p75=1-3
+     t= 10.0    median count= 1.0    p25-p75=1-2
+  devCards       recommended t=7.5 (median count ≈ 5):
+     t=  5.5    median count=10.0    p25-p75=8-12
+     t=  6.0    median count= 8.0    p25-p75=7-10
+     t=  6.5    median count= 8.0    p25-p75=6-10
+     t=  7.0    median count= 7.0    p25-p75=5-8
+     t=  7.5    median count= 5.0    p25-p75=4-7  ←
+     t=  8.0    median count= 4.0    p25-p75=3-6
+     t=  8.5    median count= 4.0    p25-p75=2-5
+     t=  9.0    median count= 2.0    p25-p75=1-3
+     t=  9.5    median count= 1.0    p25-p75=0-2
+  balanced       recommended t=7.5 (median count ≈ 5):
+     t=  5.5    median count=17.0    p25-p75=15-18
+     t=  6.0    median count=14.0    p25-p75=12-16
+     t=  6.5    median count=10.0    p25-p75=8-11
+     t=  7.0    median count=10.0    p25-p75=8-11
+     t=  7.5    median count= 5.0    p25-p75=4-7  ←
+     t=  8.0    median count= 2.0    p25-p75=1-3
+
+========== 4) k SEARCH WITH CALIBRATED THRESHOLDS ==========
+Calibrated thresholds:
+  expansion      ≥ 0.0
+  cityRush       ≥ 5.0
+  portEconomy    ≥ 8.0
+  devCards       ≥ 7.5
+  balanced       ≥ 7.5
+
+Viable count = eligible AND quality ≥ threshold
+Per-map distribution of "archetypes meeting bar at k":
+k    | ≥3 archetypes meeting bar   | avg archetypes covered per map
+   1   | 100.0%                       | 4.99   ← chosen
+   2   | 100.0%                       | 4.95
+   3   |  99.8%                       | 4.70
+   4   |  98.7%                       | 4.39
+   5   |  85.0%                       | 3.46
+   6   |  69.3%                       | 2.94
+   7   |  19.5%                       | 1.66
+   8   |   9.0%                       | 1.32
+   9   |   0.2%                       | 0.42
+  10   |   0.0%                       | 0.33
+
+Smallest k meeting ≥70%: 1
+
+========== 5) WITH k=1: WHICH ARCHETYPES MISS THE BAR? ==========
+  expansion         0 / 600  (0.0%) maps fail this archetype
+  cityRush          0 / 600  (0.0%) maps fail this archetype
+  portEconomy       2 / 600  (0.3%) maps fail this archetype
+  devCards          5 / 600  (0.8%) maps fail this archetype
+  balanced          0 / 600  (0.0%) maps fail this archetype
+
+========== 6) COMPARISON: CURRENT TOP-20 vs PROPOSED CALIBRATED ==========
+Archetype       top-20 mean    calibrated mean    diff
+  expansion          5.64          6.98        +1.34
+  cityRush           5.29          6.67        +1.38
+  portEconomy        1.14          4.67        +3.53
+  devCards           9.61          5.29        -4.32
+  balanced          17.42          5.65        -11.77
+
+================================================
+     pc=6   n=600
+================================================
+Generated 600 maps in 139.9s
+
+========== 1) QUALITY DISTRIBUTION (all eligible spots, per archetype) ==========
+Archetype       n eligible      p10     p25     p50     p75     p90     p95
+  expansion         6964      6.00    7.50    9.00   10.50   13.50   13.50
+  cityRush          6988      6.00    7.50    9.00   10.50   13.50   13.50
+  portEconomy      12764      0.66    1.22    4.82    8.18   10.10   11.78
+  devCards         13326      3.50    5.00    6.50    8.00    9.00    9.50
+  balanced         19805      4.90    5.60    6.30    7.70    8.40    8.40
+
+========== 2) PER-MAP QUALITY: best / top-3 avg / top-5 avg ==========
+  expansion      best p50=12.00  p25=12.00   top3 p50=12.00  p25=11.00   top5 p50=11.40  p25=10.50
+  cityRush       best p50=13.50  p25=12.00   top3 p50=12.50  p25=11.50   top5 p50=11.40  p25=10.80
+  portEconomy    best p50=13.73  p25=12.13   top3 p50=11.50  p25=10.54   top5 p50=10.39  p25=9.73
+  devCards       best p50=9.50  p25=9.00   top3 p50=9.33  p25=9.00   top5 p50=9.00  p25=8.70
+  balanced       best p50=8.40  p25=8.40   top3 p50=8.40  p25=8.17   top5 p50=8.26  p25=7.98
+
+========== 3) THRESHOLD SWEEP (find threshold for median count ≈ 5) ==========
+  expansion      recommended t=9.5 (median count ≈ 5):
+     t=  7.5    median count=10.0    p25-p75=8-12
+     t=  8.0    median count= 8.0    p25-p75=6-10
+     t=  8.5    median count= 8.0    p25-p75=6-10
+     t=  9.0    median count= 8.0    p25-p75=6-10
+     t=  9.5    median count= 6.0    p25-p75=4-6  ←
+     t= 10.0    median count= 6.0    p25-p75=4-6
+     t= 10.5    median count= 6.0    p25-p75=4-6
+     t= 11.0    median count= 2.0    p25-p75=2-4
+     t= 11.5    median count= 2.0    p25-p75=2-4
+  cityRush       recommended t=9.5 (median count ≈ 5):
+     t=  7.5    median count=10.0    p25-p75=8-12
+     t=  8.0    median count= 8.0    p25-p75=6-10
+     t=  8.5    median count= 8.0    p25-p75=6-10
+     t=  9.0    median count= 8.0    p25-p75=6-10
+     t=  9.5    median count= 6.0    p25-p75=4-8  ←
+     t= 10.0    median count= 6.0    p25-p75=4-8
+     t= 10.5    median count= 6.0    p25-p75=4-8
+     t= 11.0    median count= 2.0    p25-p75=2-4
+     t= 11.5    median count= 2.0    p25-p75=2-4
+  portEconomy    recommended t=8.5 (median count ≈ 5):
+     t=  6.5    median count= 8.0    p25-p75=6-10
+     t=  7.0    median count= 7.0    p25-p75=6-8
+     t=  7.5    median count= 6.0    p25-p75=5-8
+     t=  8.0    median count= 6.0    p25-p75=4-7
+     t=  8.5    median count= 5.0    p25-p75=3-6  ←
+     t=  9.0    median count= 4.0    p25-p75=3-5
+     t=  9.5    median count= 3.0    p25-p75=2-4
+     t= 10.0    median count= 2.0    p25-p75=1-3
+     t= 10.5    median count= 2.0    p25-p75=1-2
+  devCards       recommended t=8.5 (median count ≈ 5):
+     t=  6.5    median count=12.0    p25-p75=10-14
+     t=  7.0    median count=10.0    p25-p75=8-12
+     t=  7.5    median count= 8.0    p25-p75=6-10
+     t=  8.0    median count= 7.0    p25-p75=5-8
+     t=  8.5    median count= 5.0    p25-p75=4-7  ←
+     t=  9.0    median count= 3.0    p25-p75=2-4
+     t=  9.5    median count= 2.0    p25-p75=0-3
+     t= 10.0    median count= 0.0    p25-p75=0-1
+     t= 10.5    median count= 0.0    p25-p75=0-0
+  balanced       recommended t=8.0 (median count ≈ 5):
+     t=  6.0    median count=22.0    p25-p75=20-24
+     t=  6.5    median count=16.0    p25-p75=14-18
+     t=  7.0    median count=16.0    p25-p75=14-18
+     t=  7.5    median count= 9.0    p25-p75=7-10
+     t=  8.0    median count= 4.0    p25-p75=2-5  ←
+
+========== 4) k SEARCH WITH CALIBRATED THRESHOLDS ==========
+Calibrated thresholds:
+  expansion      ≥ 9.5
+  cityRush       ≥ 9.5
+  portEconomy    ≥ 8.5
+  devCards       ≥ 8.5
+  balanced       ≥ 8.0
+
+Viable count = eligible AND quality ≥ threshold
+Per-map distribution of "archetypes meeting bar at k":
+k    | ≥3 archetypes meeting bar   | avg archetypes covered per map
+   1   | 100.0%                       | 4.91   ← chosen
+   2   | 100.0%                       | 4.78
+   3   |  97.0%                       | 4.17
+   4   |  91.8%                       | 3.73
+   5   |  49.5%                       | 2.49
+   6   |  33.0%                       | 2.03
+   7   |   4.5%                       | 0.99
+   8   |   1.3%                       | 0.74
+   9   |   0.0%                       | 0.28
+  10   |   0.0%                       | 0.22
+
+Smallest k meeting ≥70%: 1
+
+========== 5) WITH k=1: WHICH ARCHETYPES MISS THE BAR? ==========
+  expansion        23 / 600  (3.8%) maps fail this archetype
+  cityRush         11 / 600  (1.8%) maps fail this archetype
+  portEconomy       2 / 600  (0.3%) maps fail this archetype
+  devCards         11 / 600  (1.8%) maps fail this archetype
+  balanced          8 / 600  (1.3%) maps fail this archetype
+
+========== 6) COMPARISON: CURRENT TOP-20 vs PROPOSED CALIBRATED ==========
+Archetype       top-20 mean    calibrated mean    diff
+  expansion          6.84          5.13        -1.72
+  cityRush           5.70          5.51        -0.19
+  portEconomy        0.10          4.62        +4.52
+  devCards           9.24          5.54        -3.70
+  balanced          19.80          3.64        -16.16
+
+ [32m✓[39m tests/stress-viability-calibration.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 168285[2mms[22m[39m
+   [33m[2m✓[22m[39m viability calibration[2m > [22mper-archetype quality thresholds + k search [33m168284[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 14:46:51
+[2m   Duration [22m 168.72s[2m (transform 112ms, setup 0ms, collect 126ms, tests 168.28s, environment 0ms, prepare 104ms)[22m
+

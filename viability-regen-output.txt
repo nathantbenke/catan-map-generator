@@ -1,0 +1,93 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/Personal Projects/Catan Map Generator[39m
+
+[90mstdout[2m | tests/stress-viability-regen.test.ts[2m > [22m[2mviability regen validation[2m > [22m[2mnew k=5 gate — acceptance + port-economy visibility
+[22m[39m
+===================== pc=4 n=1000 =====================
+Generated 1000 maps in 41.4s (41 ms/map)
+
+Acceptance:
+  attempts:    mean=86.9  p50=58  p95=268  max=774
+  fellback:    0 / 1000 (0.0%)
+
+Fairness:
+  stdev:  mean=0.462  p50=0.492  p95=0.636
+  spread: mean=1.193  p50=1.245  p95=1.683
+
+Viable archetype counts (NEW gate metric, k=5 bar):
+  archetype       mean    p25    p50    p75   maps with ≥5
+  expansion       6.88    6.0    6.0    8.0   81.8%
+  cityRush        7.06    6.0    8.0    8.0   87.6%
+  portEconomy    17.45   17.0   18.0   18.0   100.0%
+  devCards       14.14   13.0   14.0   16.0   100.0%
+  balanced       19.83   18.0   21.0   22.0   100.0%
+
+Top-20 archetypeMix (OLD UI display metric, kept for reference):
+  archetype       mean    p50
+  expansion       5.50    5.0
+  cityRush        4.90    5.0
+  portEconomy     0.63    0.0
+  devCards        4.57    4.0
+  balanced        4.39    4.0
+
+Gate decision distribution:
+  archetypes meeting k=5 bar:
+    0: 0 (0.0%)
+    1: 0 (0.0%)
+    2: 0 (0.0%)
+    3: 24 (2.4%)
+    4: 258 (25.8%)
+    5: 718 (71.8%)
+
+Port-economy diagnostic surface:
+  port-economy openings per map: mean=17.4  p50=18
+  top port-economy strength:     mean=12.52  p50=12.43  p95=16.39
+
+===================== pc=6 n=1000 =====================
+Generated 1000 maps in 212.3s (212 ms/map)
+
+Acceptance:
+  attempts:    mean=186.3  p50=134  p95=578  max=1224
+  fellback:    0 / 1000 (0.0%)
+
+Fairness:
+  stdev:  mean=0.595  p50=0.621  p95=0.782
+  spread: mean=1.742  p50=1.796  p95=2.387
+
+Viable archetype counts (NEW gate metric, k=5 bar):
+  archetype       mean    p25    p50    p75   maps with ≥5
+  expansion      11.82   10.0   12.0   14.0   99.9%
+  cityRush       11.79   10.0   12.0   14.0   99.8%
+  portEconomy    21.27   21.0   22.0   22.0   100.0%
+  devCards       22.06   20.0   22.0   24.0   100.0%
+  balanced       32.97   30.0   33.0   34.0   100.0%
+
+Top-20 archetypeMix (OLD UI display metric, kept for reference):
+  archetype       mean    p50
+  expansion       6.69    7.0
+  cityRush        5.01    5.0
+  portEconomy     0.08    0.0
+  devCards        4.10    4.0
+  balanced        4.12    4.0
+
+Gate decision distribution:
+  archetypes meeting k=5 bar:
+    0: 0 (0.0%)
+    1: 0 (0.0%)
+    2: 0 (0.0%)
+    3: 0 (0.0%)
+    4: 3 (0.3%)
+    5: 997 (99.7%)
+
+Port-economy diagnostic surface:
+  port-economy openings per map: mean=21.3  p50=22
+  top port-economy strength:     mean=13.56  p50=13.55  p95=16.37
+
+ [32m✓[39m tests/stress-viability-regen.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 253637[2mms[22m[39m
+   [33m[2m✓[22m[39m viability regen validation[2m > [22mnew k=5 gate — acceptance + port-economy visibility [33m253636[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 15:08:51
+[2m   Duration [22m 254.06s[2m (transform 103ms, setup 0ms, collect 111ms, tests 253.64s, environment 0ms, prepare 104ms)[22m
+
