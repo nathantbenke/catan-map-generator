@@ -55,6 +55,18 @@ export interface Intersection {
   y: number;
 }
 
+/** Strategic archetype a spot best fits. Drives the map-level diversity
+ *  check: a healthy Catan board supports multiple paths to victory, so the
+ *  top-N intersections should be split across several archetypes. A board
+ *  where the top 20 spots are all city-rush is balanced on paper but
+ *  strategically stale — every player will pursue the same plan. */
+export type Archetype =
+  | 'expansion'      // brick + wood for road rush, settlement spread
+  | 'cityRush'       // ore + wheat for fast cities
+  | 'portEconomy'    // strong port adjacency (especially matching resource)
+  | 'devCards'       // sheep-heavy for dev-card spam + knight army
+  | 'balanced';      // wide resource diversity, jack-of-all-trades flex
+
 export interface SpotScore {
   intersectionId: string;
   pipValue: number;
@@ -72,11 +84,18 @@ export interface SpotScore {
    *  Models the early-game speed-run plan: get cards on placement → road →
    *  third settlement at a distance-2 spot. */
   startingHandBonus: number;
+  /** Bonus for containing a pair of adjacent resources that is rare on this
+   *  map's macro distribution. A brick+wood corner on a board with few
+   *  brick-wood adjacencies overall is a premium spot regardless of pip
+   *  totals — it's one of the only places to execute the road-rush plan. */
+  pairScarcityBonus: number;
   sameNumberPenalty: number;
   total: number;
   hasRoadCombo: boolean;
   hasCityCombo: boolean;
   hasSettlementCombo: boolean;
+  /** Strategic archetype this spot best fits — see Archetype. */
+  archetype: Archetype;
 }
 
 export interface ResourceHealth {
@@ -85,7 +104,60 @@ export interface ResourceHealth {
   pipVariance: number;
   concentration: number;
   topNumber: number | null;
+  /** This resource's share of the board's total pip production:
+   *  totalPips / Σ(allResources.totalPips). Distinct from absolute pip count
+   *  — captures relative production. */
+  productionShare: number;
+  /** Baseline share if pips were proportional to tile counts:
+   *  tiles / totalProducingTiles. The yardstick productionShare is judged
+   *  against — a resource with 22% of tiles "should" produce ~22% of pips,
+   *  and large deviations break the trading economy. */
+  expectedShare: number;
   status: 'healthy' | 'warning' | 'unhealthy';
+}
+
+/** Spatial pip distribution measured by board quadrant. Each quadrant's
+ *  share of total pips is compared to its share of producing tiles — a
+ *  quadrant that holds 25% of tiles but 50% of pips is a "super continent"
+ *  even if no individual rule is broken. spread = max − min of those
+ *  ratios across the 4 quadrants. */
+export interface PipSpatial {
+  /** Total pip yield in each quadrant: [NW, NE, SW, SE] (SVG coords). */
+  quadrantPips: [number, number, number, number];
+  /** Producing tile count in each quadrant. */
+  quadrantTiles: [number, number, number, number];
+  /** Each quadrant's (pip share) / (tile share). 1.0 = proportional. */
+  quadrantRatios: [number, number, number, number];
+  /** max − min of quadrantRatios. Higher = more uneven distribution. */
+  spread: number;
+}
+
+/** Per-port hinterland strength. supportScore sums the pip yields of nearby
+ *  matching-resource hexes (or all producing hexes for generic ports),
+ *  weighted by graph distance from the port intersection — a proxy for
+ *  "how productive is the territory this port can serve." Two specific
+ *  ports of equal type can have wildly different supportScore depending on
+ *  what the surrounding numbers rolled. */
+export interface PortSupport {
+  type: PortType;
+  /** The 1-2 intersection IDs at the port's land-corner edge. */
+  intersectionIds: string[];
+  supportScore: number;
+}
+
+/** Map-level adjacency frequency for one ordered-canonical resource pair.
+ *  `expected` is the count you'd see if pairs were distributed proportional
+ *  to the product of tile counts (a · b / Σ(i · j) for distinct unordered
+ *  pairs). `delta = observed − expected`: negative means the pair is rarer
+ *  than chance, positive means abundant. Drives the pair-scarcity bonus in
+ *  spot scoring and the pair table in the analyze panel. */
+export interface ResourcePair {
+  a: ProducingResource;
+  b: ProducingResource;
+  observed: number;
+  expected: number;
+  delta: number;
+  status: 'rare' | 'normal' | 'abundant';
 }
 
 export interface FairnessReport {

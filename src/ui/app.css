@@ -427,6 +427,43 @@
 .health__dot--healthy { background: #4a8a45; }
 .health__dot--warning { background: #d4a228; }
 .health__dot--unhealthy { background: #c0341d; }
+.health__share {
+  font-size: 0.85em;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.pairs {
+  background: white;
+  border: 1px solid var(--catan-brown-mid);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+.pairs__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--catan-brown-mid);
+  margin-bottom: 6px;
+}
+.pairs__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 8px;
+  font-size: 12px;
+}
+.pairs__cell {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border-left: 3px solid transparent;
+}
+.pairs__cell--normal { border-left-color: #b8a878; background: #fdf6e3; }
+.pairs__cell--rare { border-left-color: #c0341d; background: #fbe6e1; }
+.pairs__cell--abundant { border-left-color: #4a8a45; background: #e7f1de; }
+.pairs__label { font-weight: 600; }
+.pairs__count { opacity: 0.8; font-variant-numeric: tabular-nums; }
 
 .fairness {
   background: white;

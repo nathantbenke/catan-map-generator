@@ -11,7 +11,15 @@ import type {
 import { checkHardConstraints } from './constraints';
 import { mulberry32, makeSeed, pick } from './random';
 import { randomizeMap } from './randomize';
-import { computeHealth, hasDroughtCluster, isResourceHealthy, scoreMap } from './score';
+import {
+  arePortsBalanced,
+  computeHealth,
+  hasBalancedPipDistribution,
+  hasDroughtCluster,
+  hasStrategicDiversity,
+  isResourceHealthy,
+  scoreMap,
+} from './score';
 
 export interface GenerateOptions {
   playerCount: PlayerCount;
@@ -49,9 +57,14 @@ export function generateMap(opts: GenerateOptions): GenerateResult {
     if (!hardOnlyFallback) hardOnlyFallback = { hexes: candidate.hexes, ports: candidate.ports };
 
     const challenge = resolveChallenge(opts.variants, rng);
-    if (!challengeMatches(candidate.hexes, opts.playerCount, challenge)) continue;
+    if (!challengeMatches(candidate.hexes, candidate.ports, opts.playerCount, challenge)) continue;
 
     const scored = scoreMap(candidate.hexes, candidate.ports, opts.playerCount);
+    // Archetype diversity is checked post-scoring (it needs spot.archetype).
+    // Only enforced in balanced mode — challenge modes intentionally bias
+    // the strategic landscape (drought = no expansion, scarcity = nothing
+    // but city rush, etc.) and shouldn't be rejected for narrowness.
+    if (challenge.kind === 'none' && !hasStrategicDiversity(scored.spots)) continue;
     const fairnessOk = scored.fairness.stdev <= threshold;
     const score = scored.fairness.stdev;
 
@@ -134,12 +147,16 @@ function resolveChallenge(variants: Variants, rng: () => number): ResolvedChalle
 
 function challengeMatches(
   hexes: Hex[],
+  ports: Port[],
   playerCount: PlayerCount,
   challenge: ResolvedChallenge,
 ): boolean {
   if (challenge.kind === 'none') {
     const health = computeHealth(hexes);
-    return isResourceHealthy(health, hexes, playerCount);
+    if (!isResourceHealthy(health, hexes, playerCount)) return false;
+    if (!arePortsBalanced(ports, hexes)) return false;
+    if (!hasBalancedPipDistribution(hexes)) return false;
+    return true;
   }
   const health = computeHealth(hexes);
   if (challenge.kind === 'scarcity') {

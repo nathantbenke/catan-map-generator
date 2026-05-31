@@ -394,17 +394,112 @@ function AnalyzePanel() {
   return (
     <>
       <div className="health">
-        {scored.health.map(h => (
-          <div className="health__cell" key={h.resource}>
-            <div>
-              <span className={`health__dot health__dot--${h.status}`} />
-              {h.resource}
+        {scored.health.map(h => {
+          // Production share delta vs. expected (tile-count) share.
+          // 0 → producing exactly its fair share; ±20% → meaningful skew.
+          const shareDelta = h.expectedShare > 0
+            ? (h.productionShare / h.expectedShare - 1) * 100
+            : 0;
+          const deltaSign = shareDelta > 0 ? '+' : '';
+          return (
+            <div className="health__cell" key={h.resource}>
+              <div>
+                <span className={`health__dot health__dot--${h.status}`} />
+                {h.resource}
+              </div>
+              <div>{h.totalPips}p</div>
+              <div style={{ opacity: 0.7 }} title="concentration on top number">
+                {(h.concentration * 100).toFixed(0)}%
+              </div>
+              <div
+                className="health__share"
+                title="production share vs expected (tile-count share)"
+              >
+                {deltaSign}{shareDelta.toFixed(0)}%
+              </div>
             </div>
-            <div>{h.totalPips}p</div>
-            <div style={{ opacity: 0.7 }}>{(h.concentration * 100).toFixed(0)}%</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      <div className="pairs">
+        <div className="pairs__title">Adjacent resource pairs (obs / exp)</div>
+        <div className="pairs__grid">
+          {scored.pairs.map(p => (
+            <div className={`pairs__cell pairs__cell--${p.status}`} key={`${p.a}-${p.b}`}>
+              <span className="pairs__label">{p.a.slice(0, 2)}·{p.b.slice(0, 2)}</span>
+              <span className="pairs__count">{p.observed} / {p.expected.toFixed(1)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {(() => {
+        const mix = scored.archetypeMix;
+        const entries: Array<[string, number]> = [
+          ['Expansion', mix.expansion],
+          ['City Rush', mix.cityRush],
+          ['Port Econ', mix.portEconomy],
+          ['Dev Cards', mix.devCards],
+          ['Balanced', mix.balanced],
+        ];
+        const withCoverage = entries.filter(([, c]) => c >= 3).length;
+        return (
+          <div className="pairs">
+            <div className="pairs__title">
+              Top-20 archetype mix
+              <span style={{ marginLeft: 8, opacity: 0.7 }}>
+                {withCoverage} viable
+                {withCoverage < 3 ? ' ⚠' : ''}
+              </span>
+            </div>
+            <div className="pairs__grid">
+              {entries.map(([label, count]) => (
+                <div
+                  className={`pairs__cell pairs__cell--${count >= 3 ? 'normal' : count >= 1 ? 'rare' : 'rare'}`}
+                  key={label}
+                >
+                  <span className="pairs__label">{label}</span>
+                  <span className="pairs__count">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
+        const specific = scored.ports.filter(p => p.type !== 'generic');
+        if (specific.length === 0) return null;
+        const max = Math.max(...specific.map(p => p.supportScore), 1);
+        const min = Math.min(...specific.map(p => p.supportScore));
+        const ratio = scored.specificPortSupportRatio;
+        const ratioBad = ratio > 3.0;
+        return (
+          <div className="pairs">
+            <div className="pairs__title">
+              Port hinterland support
+              <span style={{ marginLeft: 8, opacity: 0.7 }}>
+                ratio {isFinite(ratio) ? ratio.toFixed(2) : '∞'}
+                {ratioBad ? ' ⚠' : ''}
+              </span>
+            </div>
+            <div className="pairs__grid">
+              {specific.map((p, i) => {
+                const status = p.supportScore === max
+                  ? 'abundant'
+                  : p.supportScore === min ? 'rare' : 'normal';
+                return (
+                  <div className={`pairs__cell pairs__cell--${status}`} key={`port-${i}-${p.type}`}>
+                    <span className="pairs__label">{p.type.slice(0, 4)} 2:1</span>
+                    <span className="pairs__count">{p.supportScore.toFixed(1)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="fairness">
         <div className="fairness__row">
@@ -418,6 +513,26 @@ function AnalyzePanel() {
         <div className="fairness__row">
           <span>Mean</span>
           <span>{mean.toFixed(2)}</span>
+        </div>
+        <div className="fairness__row" title="Min roads from any picked spot to any port, per player">
+          <span>Port reach</span>
+          <span>
+            {scored.playerPortDistance.map((d, i) =>
+              `P${i + 1}:${Number.isFinite(d) ? d : '∞'}`,
+            ).join(' ')}
+          </span>
+        </div>
+        <div
+          className="fairness__row"
+          title="Spread between highest- and lowest-producing quadrant relative to its tile share. >1.0 = super-continent territory."
+        >
+          <span>Pip spread</span>
+          <span style={{ color: scored.pipSpatial.spread > 1.0 ? '#c0341d' : undefined }}>
+            {scored.pipSpatial.spread.toFixed(2)}
+            <span style={{ marginLeft: 6, opacity: 0.6, fontSize: '0.85em' }}>
+              ({scored.pipSpatial.quadrantRatios.map(r => r.toFixed(2)).join(' ')})
+            </span>
+          </span>
         </div>
         <div className="fairness__bars">
           {fairness.playerTotals.map((v, i) => (
